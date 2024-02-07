@@ -1,111 +1,98 @@
-.globl main
-.data
-  msgprompt: .word msgprompt_data
-  msgres1: .word msgres1_data
-  msgres2: .word msgres2_data
+                    .globl  main
+.data   
+prompt_input:       .word   input_str
+output_given:       .word   given_str
+output_result:      .word   result_str
+output_question:    .word   question_str
 
-  msgprompt_data: .asciiz "Please input an integer value greater than or equal to 0: "
-  msgres1_data: .asciiz "Your input: "
-  msgres2_data: .asciiz "\nThe factorial is: "
-  prompt_again:   .asciiz "\nWould you like to do this again (Y/N): "
-  newline:        .asciiz "\n"
+input_str:          .asciiz "\nPlease input an integer value greater than or equal to 0: "
+given_str:          .asciiz "Your input: "
+result_str:         .asciiz "\nThe factorial is: "
+question_str:       .asciiz "\nWould you like to do this again (Y/N): "
 
 
-.text
-main:
-  la $t0, msgprompt    # load address of msgprompt into $t0
-  lw $a0, 0($t0)       # load data from address in $t0 into $a0
-  li $v0, 4            # call code for print_string
-  syscall                   # run the print_string syscall
+.text   
+main:               
+    la      $t0,        prompt_input                                                        # load address of prompt_input into %t0
+    lw      $a0,        0($t0)                                                              # load the data at $t0 into $a0
+    li      $v0,        4                                                                   # code for print string
+    syscall                                                                                 # print prompt for user input
 
-  # reading the input int
-  # scanf("%d", &number);
-  li      $v0, 5            # call code for read_int
-  syscall                   # run the read_int syscall
-  move    $t0, $v0          # store input in $t0
+    li      $v0,        5                                                                   # code for read int
+    syscall                                                                                 # read an int from user input
+    move    $t0,        $v0                                                                 # store the input int in $t0
 
-  move    $a0, $t0          # move input to argument register $a0
-  addi    $sp, $sp, -12     # move stackpointer up 3 words
-  sw      $t0, 0($sp)       # store input in top of stack
-  sw      $ra, 8($sp)       # store counter at bottom of stack
-  jal     factorial         # call factorial
+    move    $a0,        $t0                                                                 # move input to arg register $a0
+    addi    $sp,        $sp,                -12                                             # adjust the stack frame for 3 words
+    sw      $t0,        0($sp)                                                              # push input int to the top of stack
+    sw      $ra,        8($sp)                                                              # save return address at the bottom of stack 
+    jal     factorial                                                                       # go to factorial [reserve 4($sp) for result]
 
-  # when we get here, we have the final return value in 4($sp)
 
-  lw      $s0, 4($sp)       # load final return val into $s0
+    lw      $s0,        4($sp)                                                              # load final result into $s0
 
-  # printf("The value of 'factorial(%d)' is:  %d\n",
-  la      $t1, msgres1      # load msgres1 address into $t1
-  lw      $a0, 0($t1)       # load msgres1_data value into $a0
-  li      $v0, 4            # system call for print_string
-  syscall                   # print value of msgres1_data to screen
+    la      $t1,        output_given                                                        # load output_given address into $t1
+    lw      $a0,        0($t1)                                                              # load output_given value into $a0
+    li      $v0,        4                                                                   # code for print string
+    syscall                                                                                 # print "Your input: " to screen
 
-  lw      $a0, 0($sp)       # load original value into $a0
-  li      $v0, 1            # system call for print_int
-  syscall                   # print original value to screen
+    lw      $a0,        0($sp)                                                              # load input integer into $a0
+    li      $v0,        1                                                                   # code for print int
+    syscall                                                                                 # print input integer to screen
 
-  la      $t2, msgres2      #load msgres2 address into $t1
-  lw      $a0, 0($t2)       # load msgres_data value into $a0
-  li      $v0, 4            # system call for print_string
-  syscall                   # print value of msgres2_data to screen
+    la      $t1,        output_result                                                       #load output_result address into $t1
+    lw      $a0,        0($t1)                                                              # load output_result value into $a0
+    li      $v0,        4                                                                   # code for print string
+    syscall                                                                                 # print "The factorial is: " to screen
 
-  move    $a0, $s0          # move final return value from $s0 to $a0 for return
-  li      $v0, 1            # system call for print_int
-  syscall                   # print final return value to screen
+    move    $a0,        $s0                                                                 # move final result from $s0 to arg register $a0
+    li      $v0,        1                                                                   # code for print int
+    syscall                                                                                 # print final result to screen
 
-  addi    $sp, $sp, 12      # move stack pointer back down where we started
+    addi    $sp,        $sp,                12                                              # move stack pointer to starting address
 
-# Step 5
-    li $v0, 4
-    la $a0, prompt_again
-    syscall
-    li $v0, 12      # Read a single character
-    syscall
-    beq $v0, 89, reset   # Branch if the character is 'Y' (ASCII code for Y is 89)
-  # return 0;
-  li      $v0, 10           # system call for exit
-  syscall                   # exit!
+    # Step 5
 
-.text
-reset: 
-li $v0, 4
-    la $a0, newline
-    syscall
-    j main
+    la      $t1,        output_question                                                     # load output_question address into $t1
+    lw      $a0,        0($t1)                                                              # load output_question value into $a0
+    li      $v0,        4                                                                   # code for print string
+    syscall                                                                                 # ask if the user would like to go again
+    li      $v0,        12                                                                  # read a single character from the user
+    syscall                                                                                 # reads first character as soon as it is typed
+    beq     $v0,        89,                 reset                                           # branch to reset if the character is 'Y'
 
-.text
-factorial:
-  # base  case - still in parent's stack segment
-  lw      $t0, 0($sp)       # load input from top of stack into register $t0
-  #if (x == 0)
-  beq     $t0, 0, returnOne # if $t0 is equal to 0, branch to returnOne
-  addi    $t0, $t0, -1      # subtract 1 from $t0 if not equal to 0
+    li      $v0,        10                                                                  # code for exit
+    syscall                                                                                 # exit the program
 
-  # recursive case - move to this call's stack segment
-  addi    $sp, $sp, -12     # move stack pointer up 3 words
-  sw      $t0, 0($sp)       # store current working number into the top of the stack segment
-  sw      $ra, 8($sp)       # store counter at bottom of stack segment
+.text   
+reset:              
+    j       main                                                                            # return to the top of the main function
 
-  jal     factorial         # recursive call
+.text   
+factorial:          
+    lw      $t0,        0($sp)                                                              # load input from top of stack into register $t0
+    beq     $t0,        0,                  base_case                                       # if $t0 is equal to 0, branch to base_case
+    addi    $t0,        $t0,                -1                                              # subtract 1 from $t0 if not equal to 0
 
-  # if we get here, then we have the child return value in 4($sp)
-  lw      $ra, 8($sp)       # load this call's $ra again(we just got back from a jump)
-  lw      $t1, 4($sp)       # load child's return value into $t1
+    addi    $sp,        $sp,                -12                                             # adjust the stack frame for 3 words
+    sw      $t0,        0($sp)                                                              # store current result at the top of stack segment
+    sw      $ra,        8($sp)                                                              # store return address at the bottom of stack segment
 
-  lw      $t2, 12($sp)      # load parent's start value into $t2
-# return x * factorial(x-1); (not the return statement, but the multiplication)
-  mul     $t3, $t1, $t2     # multiply child's return value by parent's working value, store in $t3.
+    jal     factorial                                                                       # recursive call
 
-  sw      $t3, 16($sp)      # take result(in $t3), store in parent's return value.
+    lw      $ra,        8($sp)                                                              # load this call's return address
+    lw      $t1,        4($sp)                                                              # load child's return value into $t1
+    lw      $t2,        12($sp)                                                             # load parent's working result into $t2
 
-  addi    $sp, $sp, 12      # move stackpointer back down for the parent call
+    mul     $t3,        $t1,                $t2                                             # multiply child's return value by parent's working value & store in $t3
+    sw      $t3,        16($sp)                                                             # move the result into parent's return value
 
-  jr      $ra               # jump to parent call
+    addi    $sp,        $sp,                12                                              # move stack pointer to the parent call
 
-.text
-#return 1;
-returnOne:
-  li      $t0, 1            # load 1 into register $t0
-  sw      $t0, 4($sp)       # store 1 into the parent's return value register
-  jr      $ra               # jump to parent call
-  
+    jr      $ra                                                                             # jump to parent call
+
+.text   
+base_case:          
+    li      $t0,        1                                                                   # load immediate 1 into register $t0
+    sw      $t0,        4($sp)                                                              # store 1 in parent stack return value
+    jr      $ra                                                                             # jump to parent call
