@@ -60,20 +60,19 @@ main:
 
                     .text   
 factorial:          
-	sw $ra, 4($sp)
                     lw $s0, 0($sp)                                                              # load the argument passed by the parent
                     beqz $s0, base_case                                                         # branch to base_case when we decrement down to 
 
                     addi $s0, $s0, -1
                     addi $sp, $sp, -8                                                           # adjust the stack frame to hold 2 items
                     sw $s0, 0($sp)                                                           # decrement the argument passed by 1
-                    
+                    sw $ra, 4(sp)
                     jal factorial                                                               # recursively call factorial on the decremented argument
 
-			addi $sp, $sp, 8                                                            # shift the stack frame to the parent's stack segment
+                    addi $sp, $sp, 8                                                            # shift the stack frame to the parent's stack segment
                     lw $ra, 4($sp)                                                              # load the next parent's return address
                     lw $s0, 0($sp)                                                              # load the argument passed by the parent
-
+                    
 
                     mul $v0, $s0, $v0                                                           # multiply child's return value by the argument passed
                     jr $ra                                                                      # return the product to the parent call
