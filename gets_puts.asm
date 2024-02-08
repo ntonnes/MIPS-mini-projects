@@ -1,33 +1,46 @@
-		.data
-buffer: 	.space 64    				# buffer to store user input
-prompt_first: 	.asciiz "First name: \n"
-prompt_last: 	.asciiz "Last name: \n"
-format_output: 	.asciiz "You entered: \n"
+    .data
+buffer_first: .space 64    # buffer to store first name
+buffer_last:  .space 64    # buffer to store last name
+prompt_first: .asciiz "First name: "
+prompt_last:  .asciiz "Last name: "
+format_output: .asciiz "You entered: "
+comma_space:  .asciiz ", "
+dot:          .asciiz "."
+newline:      .asciiz "\n"
 
-		.text
+    .text
 main:
-    		la $a0, prompt_first			# load prompt for first name into argument register $a0
-    		jal PUTS					# print "First name: " to the screen
-    
-    		la $a0, buffer				# load the buffer address into argument register $a0
-    		la $a1, 64				# load the buffer limit into argument register $a1
-    		jal GETS				# call gets, load return address into register $ra
-    
-    		la $a0, prompt_last			# load prompt for last name into argument register $a0
-    		jal PUTS					# print "Last name: " to the screen
-    
-    		la $a0, buffer				# load the buffer address into argument register $a0
-    		li $a1, 64
-    		jal GETS				# call gets, load return address into register $ra
-    
-    		la $a0, format_output			# load the output preample into argument register $a0
-    		jal PUTS					# print "You entered: "
-    		
-    		la $a0, buffer				# load the buffer address into argument register $a0
-    		jal PUTS				# call gets, load return address into register $ra
-    
-    		li $v0, 10				# code for exit
-    		syscall					# exit the program
+    la $a0, prompt_first
+    jal PUTS
+    la $a0, newline
+    jal PUTS
+    la $a0, buffer_first
+    la $a1, 64
+    jal GETS
+
+    la $a0, prompt_last
+    jal PUTS
+    la $a0, newline
+    jal PUTS
+    la $a0, buffer_last
+    li $a1, 64
+    jal GETS
+
+    la $a0, format_output
+    jal PUTS
+    la $a0, buffer_last
+    jal PUTS
+    la $a0, comma_space
+    jal PUTS
+    la $a0, buffer_first
+    jal PUTS
+    la $a0, dot
+    jal PUTS
+    la $a0, newline
+    jal PUTS
+
+    li $v0, 10
+    syscall
 
 
 # Driver for getting 1 character
@@ -57,6 +70,12 @@ getchar_loop:
 		beq $v0, $t0, end_gets
 		addiu $t1, $v0, 1
 		beq $t1, $a1, end_gets
+
+        # Check if the character is a backspace
+        li $t0, 8
+        beq $v0, $t0, handle_backspace
+        li $t0, 127
+        beq $v0, $t0, handle_backspace
 		
 		sb $v0, 0($a0)
 		addiu $a0, $a0, 1
@@ -64,6 +83,16 @@ getchar_loop:
 		addiu $v0, $v0, 1
 		
 		j getchar_loop
+    
+handle_backspace:
+    # Check if we're at the start of the buffer
+    lw $t0, 0($sp)
+    bne $a0, $t0, decrement_pointer
+    j getchar_loop
+
+decrement_pointer:
+    addiu $a0, $a0, -1
+    j getchar_loop
     
 end_gets:
     		beq     $v0, $a1, skip_null
