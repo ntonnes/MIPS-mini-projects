@@ -10,6 +10,7 @@ newline:        .asciiz "\n"                    # String for a newline
 
 
                 .text
+                .globl main
 main:
                 la $a0, prompt_first            # Load the address of the first name prompt
                 jal PUTS                        # Call the PUTS function to print the prompt
@@ -44,7 +45,7 @@ main:
                 syscall                         # Call the syscall to exit the program
 
 
-# Driver for reading 1 character from input
+# DRIVER: PUTCHAR
 GETCHAR:
                 lui $a3, 0xffff                 # Base address of memory map
 CkReady:
@@ -54,60 +55,63 @@ CkReady:
                 lw $v0, 4($a3)                  # Load character from keyboard
                 jr $ra                          # Return to gets_loop
 
-# Function for reading a string from input into a buffer
+# FUNCTION: GETS
 GETS:
-                addi $sp, $sp, -16              # Allocate space for 3 items on the stack
-                
-                sw $zero, 12($sp)                  # Push the parent's return address onto the stack
-                sw $ra, 8($sp)                  # Push the parent's return address onto the stack
-                sw $a1, 4($sp)                  # Push the buffer limit onto the stack 
-                sw $a0, 0($sp)                  # Push the buffer address onto the stack
+                addi $sp, $sp, -16              # Allocate space for 4 items on the stack
 
-                move $v0, $zero                 # Initialize the return value to 0
-    
+                sw $ra, 12($sp)                 # Push the parent's return address onto the stack
+                sw $a1, 8($sp)                  # Push the buffer limit onto the stack 
+                sw $a0, 4($sp)                  # Push the buffer address onto the stack
+                sw $zero, 0($sp)                # Initialize the number of characters read to $zero
+
 getchar_loop:
+                
+                lw $t0, 4($sp)                  # Load the buffer address from the stack into $t0
+                lw $t1, 8($sp)                  # Load the buffer limit from the stack into $t1
+                lw $t2, 0($sp)                  # Load the number of characters read from the stack into $t2
+
+                beq $t1, $t2, end_gets          # If the buffer is full, jump to end_gets
+
                 jal GETCHAR                     # Call GETCHAR function to get a character from input
 
-                li $t0, 10                      # Load immediate value 10 into $t0
-                beq $v0, $t0, end_gets          # If the input character is newline (ASCII 10), jump to end_gets
-                addiu $t1, $v0, 1               # Add 1 to the input character and store in $t1
-                beq $t1, $a1, end_gets          # If $t1 equals to $a1, jump to end_gets
+                li $t3, 10
+                beq $v0, $t3, end_gets          # If the character is a newline, jump to end_gets
 
-                li $t0, 8                       # Load immediate value 8 into $t0
-                beq $v0, $t0, handle_backspace  # If the input character is backspace (ASCII 8), jump to handle_backspace
-                li $t0, 127                     # Load immediate value 127 into $t0
-                beq $v0, $t0, handle_backspace  # If the input character is delete (ASCII 127), jump to handle_backspace
+                li $t3, 8                       # ASCII value for backspace
+                beq $v0, $t3, handle_backspace  # If the character is a backspace, jump to handle_backspace
+                li $t3, 127                     # ASCII value for delete
+                beq $v0, $t3, handle_backspace  # If the character is a delete, jump to handle_backspace
 
-                sb $v0, 0($a0)                  # Store the byte in $v0 to the address in $a0
-                addiu $a0, $a0, 1               # Increment the address in $a0 by 1
+                sb $v0, 0($t0)                  # Otherwise store the character in the buffer 
 
-                addiu $v0, $v0, 1               # Increment the value in $v0 by 1
+                addiu $t0, $t0, 1               # Increment the buffer address
+                addiu $t2, $t2, 1               # Increment the number of characters read
+                sw $t0, 4($sp)                  # Update the buffer address on the stack
+                sw $t2, 0($sp)                  # Update the number of characters read on the stack
+          
 
                 j getchar_loop                  # Jump to getchar_loop
 
 handle_backspace:
-                lw $t0, 0($sp)                  # Load the word at the address in $sp into $t0
-                bne $a0, $t0, decrement         # If $a0 is not equal to $t0, jump to decrement_pointer
-                j getchar_loop                  # Jump to getchar_loop
-
-decrement:
-                addiu $a0, $a0, -1              # Decrement the address in $a0 by 1
+                lw $t3, 4($sp)                  # Load the buffer address from the stack into $t3
+                beqz $t3, getchar_loop          # If the buffer is empty, branch to getchar_loop
+                addiu $t0, $t0, -1              # Decrement the buffer address
+                addiu $t2, $t2, -1              # Decrement the number of characters read
+                sw $t0, 4($sp)                  # Update the buffer address on the stack
+                sw $t2, 0($sp)                  # Update the number of characters read on the stack
                 j getchar_loop                  # Jump to getchar_loop
 
 end_gets:
-                beq $v0, $a1, skip_null         # If $v0 equals to $a1, jump to skip_null
-                sb $zero, 0($a0)                # Store the byte in $zero to the address in $a0
+                bne $t2, $t1, add_null         # If the buffer is not full, add null character
+                lw $v0, 0($sp)                  # Load the number of characters read from the stack
+                lw $ra, 12($sp)                 # Load the parent's return address from the stack
+                jr $ra                          # Return to the parent function
 
-skip_null:
-                lw $a0, 0($sp)                  # Load the word at the address in $sp into $a0
-                lw $a1, 4($sp)                  # Load the word at the address in $sp+4 into $a1
-                lw $ra, 8($sp)                  # Load the word at the address in $sp+8 into $ra
-                addiu $sp, $sp, 12              # Add 12 to the address in $sp
+add_null:
+                sb $zero, 0($t0)
+                
 
-                jr $ra                          # Jump to the address in $ra
-
-
-# Driver for printing 1 character to output
+# DRIVER: PUTCHAR 
 PUTCHAR:
                 lui $t0, 0xffff                 # Base address of memory map
 XReady:
@@ -117,7 +121,7 @@ XReady:
                 sw $a0, 12($t0)                 # Send character to display
                 jr $ra                          # Return to call location
 
-# Function for printing a string to output from a buffer
+# FUNCTION: PUTS
 PUTS:
                 addiu $sp, $sp, -8              # Allocate space for 2 items on the stack
                 sw $ra, 4($sp)                  # Push the parent's return address onto the stack
